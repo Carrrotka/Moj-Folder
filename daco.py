@@ -11,13 +11,18 @@ import math, time
 from sklearn.metrics import mean_squared_error
 import plotly.express as px
 import plotly.graph_objects as go
-import predictionssss
 import requests
 import json
+import http.client
 # Define the main function that takes a file path to the stock price data as input
 def main(filepath,lookback):
     gru = []
     # Load stock data from CSV file and sort it by date
+    
+    
+
+
+    
     data_stock = pd.read_csv(filepath)
     data_stock = data_stock.sort_values('Date')
     
@@ -192,6 +197,7 @@ def main(filepath,lookback):
     predictions = np.append(trainPredictPlot, testPredictPlot, axis=1)
     predictions = np.append(predictions, original, axis=1)
     result = pd.DataFrame(predictions)
+   
 
 
 
@@ -205,6 +211,7 @@ def main(filepath,lookback):
     fig.add_trace(go.Scatter(x=result.index, y=result[1],
                         mode='lines',
                         name='Test prediction'))
+    print(result[1])
     fig.update_layout(
         xaxis=dict(
             showline=True,
@@ -242,7 +249,7 @@ def main(filepath,lookback):
     annotations = []
     annotations.append(dict(xref='paper', yref='paper', x=0.0, y=1.05,
                                 xanchor='left', yanchor='bottom',
-                                text='Microsoft Stock Prediction',
+                                text='Apple Stock Prediction',
                                 font=dict(family='Rockwell',
                                             size=26,
                                             color='white'),
@@ -252,7 +259,5 @@ def main(filepath,lookback):
     fig.show()
 
 # Call the main function with the path to the CSV file containing stock data
-#main('MSFT_2006-01-01_to_2018-01-01.csv',200)
-def getData():
-    res = requests.get("https://api.nasdaq.com/api/quote/GOOGL/historical?assetclass=stocks&fromdate=2014-04-06&limit=9999&todate=2024-04-06&random=48")
-    data = res.json()
+main('AAPL-Data2.csv',5)
+
