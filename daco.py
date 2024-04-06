@@ -12,6 +12,8 @@ from sklearn.metrics import mean_squared_error
 import plotly.express as px
 import plotly.graph_objects as go
 import predictionssss
+import requests
+import json
 # Define the main function that takes a file path to the stock price data as input
 def main(filepath,lookback):
     gru = []
@@ -21,21 +23,38 @@ def main(filepath,lookback):
     
     # Define a function to split the data into sequences for training and testing
     def split_data(stock, lookback):
-        data_raw = stock.to_numpy()  # Convert DataFrame to numpy array
+      
+        data_raw = stock.to_numpy()
+       
+          # Convert DataFrame to numpy array
         data = []
         
         # Create all possible sequences of length equal to 'lookback'
         for index in range(len(data_raw) - lookback): 
             data.append(data_raw[index: index + lookback])
-        
+  
+    
         data = np.array(data)
         test_set_size = int(np.round(0.2*data.shape[0]))  # Define test set size as 20% of the total
         train_set_size = data.shape[0] - test_set_size  # Remaining data will be training set
         
         # Split data into training and test sets for both features (x) and labels (y)
-        x_train = data[:train_set_size,:-1,:]
+        #x_train2 = data[:train_set_size,:-1,:]
+        #print(x_train2)
+        adam = []
+        index_raw = []
+        for i in list(range(1,len(data_raw)+1)):
+            index_raw.append([(i/200)])
+
+        for index in range(len(data_raw) - lookback): 
+            adam.append(index_raw[index: index + lookback])
+        adam = np.array(adam)
         y_train = data[:train_set_size,-1,:]
-        x_test = data[train_set_size:,:-1]
+        #print(type(y_train))
+        x_train = adam[:train_set_size,:-1,:]
+        #x_test = data[train_set_size:,:-1]
+        x_test = adam[train_set_size:,:-1]
+        #print(x_test)
         y_test = data[train_set_size:,-1,:]
         
         return [x_train, y_train, x_test, y_test]
@@ -44,8 +63,11 @@ def main(filepath,lookback):
     price_stock = data_stock[['Close']]
     # Scale the 'Close' prices to the range (-1, 1) to normalize the input for the neural network
     scaler = MinMaxScaler(feature_range=(-1, 1))
+    print("hhhhhhhhhhhhhhhhh")
+    print(price_stock['Close'].values,"dacococo",type(price_stock['Close'].values))
+    print("bbbbbbbbb")
     price_stock['Close'] = scaler.fit_transform(price_stock['Close'].values.reshape(-1,1))
-
+    print(price_stock['Close'])
     # Define the dimensions and parameters for the GRU model
     input_dim = 1
     hidden_dim = 32
@@ -76,7 +98,7 @@ def main(filepath,lookback):
     
     # Split the data into training and test sets
     x_train, y_train, x_test, y_test = split_data(price_stock, lookback)
-    print(x_test)
+
     # Convert numpy arrays to torch tensors for training the model
     x_train = torch.from_numpy(x_train).type(torch.Tensor)
     x_test = torch.from_numpy(x_test).type(torch.Tensor)
@@ -145,7 +167,6 @@ def main(filepath,lookback):
     y_train = scaler.inverse_transform(y_train_gru.detach().numpy())
     y_test_pred = scaler.inverse_transform(y_test_pred.detach().numpy())
     y_test = scaler.inverse_transform(y_test_gru.detach().numpy())
-    print(y_test_pred)
     # calculate root mean squared error
     trainScore = math.sqrt(mean_squared_error(y_train[:,0], y_train_pred[:,0]))
     print('Train Score: %.2f RMSE' % (trainScore))
@@ -231,4 +252,7 @@ def main(filepath,lookback):
     fig.show()
 
 # Call the main function with the path to the CSV file containing stock data
-main('AAPL-Data2.csv',20)
+#main('MSFT_2006-01-01_to_2018-01-01.csv',200)
+def getData():
+    res = requests.get("https://api.nasdaq.com/api/quote/GOOGL/historical?assetclass=stocks&fromdate=2014-04-06&limit=9999&todate=2024-04-06&random=48")
+    data = res.json()
