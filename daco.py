@@ -11,7 +11,7 @@ import math, time
 from sklearn.metrics import mean_squared_error
 import plotly.express as px
 import plotly.graph_objects as go
-
+import predictionssss
 # Define the main function that takes a file path to the stock price data as input
 def main(filepath,lookback):
     gru = []
@@ -130,6 +130,14 @@ def main(filepath,lookback):
  
 
 # make predictions
+    # x_test = x_test.detach().numpy().tolist()
+    # x_train_daco = x_train.detach().numpy().tolist()
+    # print(type(x_test),type(x_train_daco))
+    # for i in range(100):
+    #     x_test.append(predictionssss.main(x_train_daco,x_test))
+    # x_test.to_numpy()
+    # x_test = torch.from_numpy(x_test).type(torch.Tensor)
+
     y_test_pred = model(x_test)
 
     # invert predictions
@@ -223,4 +231,4 @@ def main(filepath,lookback):
     fig.show()
 
 # Call the main function with the path to the CSV file containing stock data
-main('AAPL-Data2.csv',200)
+main('AAPL-Data2.csv',20)
