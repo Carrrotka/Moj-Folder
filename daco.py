@@ -15,16 +15,24 @@ import requests
 import json
 import http.client
 # Define the main function that takes a file path to the stock price data as input
-def main(filepath,lookback):
+def main(symbol,lookback):
     gru = []
     # Load stock data from CSV file and sort it by date
-    
-    
+   
 
 
-    
-    data_stock = pd.read_csv(filepath)
-    data_stock = data_stock.sort_values('Date')
+    headers = {"User-Agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36"}
+    url = f'https://api.nasdaq.com/api/quote/{symbol}/historical?assetclass=stocks&fromdate=2014-04-06&limit=9999&todate=2024-04-06&api_key=MXhfTvQPCLT2nmSKDtQj'
+    response = requests.get(url, headers=headers, timeout=5)
+    a = response.json()["data"]["tradesTable"]
+    print(a)
+# Load the data into a pandas DataFrame
+    data_stock = pd.DataFrame(response.json()["data"]["tradesTable"]["rows"])
+    data_stock['close'] = data_stock['close'].str.replace('$', '')
+    data_stock['date'] = pd.to_datetime(data_stock['date'], format='%m/%d/%Y').dt.strftime('%Y-%m-%d')
+    print(data_stock)
+    #data_stock = pd.read_csv(filepath)
+    data_stock = data_stock.sort_values('date')
     
     # Define a function to split the data into sequences for training and testing
     def split_data(stock, lookback):
@@ -50,29 +58,37 @@ def main(filepath,lookback):
         index_raw = []
         for i in list(range(1,len(data_raw)+1)):
             index_raw.append([(i/200)])
-
+        index_raw2 = index_raw.copy()
+        for t in range(200):
+            index_raw2.append([(t/200)])
         for index in range(len(data_raw) - lookback): 
             adam.append(index_raw[index: index + lookback])
+        adam2=[]
+        for index in range(len(index_raw2) - lookback): 
+            adam2.append(index_raw2[index: index + lookback])
+        
         adam = np.array(adam)
+        adam2 = np.array(adam2)
         y_train = data[:train_set_size,-1,:]
         #print(type(y_train))
         x_train = adam[:train_set_size,:-1,:]
         #x_test = data[train_set_size:,:-1]
         x_test = adam[train_set_size:,:-1]
+            
         #print(x_test)
         y_test = data[train_set_size:,-1,:]
         
         return [x_train, y_train, x_test, y_test]
 
     # Select the 'Close' price column for prediction
-    price_stock = data_stock[['Close']]
+    price_stock = data_stock[['close']]
     # Scale the 'Close' prices to the range (-1, 1) to normalize the input for the neural network
     scaler = MinMaxScaler(feature_range=(-1, 1))
     print("hhhhhhhhhhhhhhhhh")
-    print(price_stock['Close'].values,"dacococo",type(price_stock['Close'].values))
+    print(price_stock['close'].values,"dacococo",type(price_stock['close'].values))
     print("bbbbbbbbb")
-    price_stock['Close'] = scaler.fit_transform(price_stock['Close'].values.reshape(-1,1))
-    print(price_stock['Close'])
+    price_stock['close'] = scaler.fit_transform(price_stock['close'].values.reshape(-1,1))
+    print(price_stock['close'])
     # Define the dimensions and parameters for the GRU model
     input_dim = 1
     hidden_dim = 32
@@ -134,24 +150,24 @@ def main(filepath,lookback):
     # Visualize the training predictions and actual data
     predict = pd.DataFrame(scaler.inverse_transform(y_train_pred.detach().numpy()))
     original = pd.DataFrame(scaler.inverse_transform(y_train_gru.detach().numpy()))
-    fig = plt.figure()
-    fig.subplots_adjust(hspace=0.2, wspace=0.2)
+    #fig = plt.figure()
+    # fig.subplots_adjust(hspace=0.2, wspace=0.2)
     
-    plt.subplot(1, 2, 1)
-    ax = sns.lineplot(x = predict.index, y = predict[0], label="Training Prediction (GRU)", color='tomato')
-    ax = sns.lineplot(x = original.index, y = original[0], label="Data", color='royalblue')
-    ax.set_title('Stock price prediction', size = 14, fontweight='bold')
-    ax.set_xlabel("Days", size = 14)
-    ax.set_ylabel("Cost (USD)", size = 14)
+    # plt.subplot(1, 2, 1)
+    # ax = sns.lineplot(x = predict.index, y = predict[0], label="Training Prediction (GRU)", color='tomato')
+    # ax = sns.lineplot(x = original.index, y = original[0], label="Data", color='royalblue')
+    # ax.set_title('Stock price prediction', size = 14, fontweight='bold')
+    # ax.set_xlabel("Days", size = 14)
+    # ax.set_ylabel("Cost (USD)", size = 14)
     
-    # Visualize the training loss over epochs
-    plt.subplot(1, 2, 2)
-    ax = sns.lineplot(data=hist, color='royalblue')
-    ax.set_xlabel("Epoch", size = 14)
-    ax.set_ylabel("Loss", size = 14)
-    ax.set_title("Training Loss", size = 14, fontweight='bold')
-    fig.set_figheight(6)
-    fig.set_figwidth(16)
+    # # Visualize the training loss over epochs
+    # plt.subplot(1, 2, 2)
+    # ax = sns.lineplot(data=hist, color='royalblue')
+    # ax.set_xlabel("Epoch", size = 14)
+    # ax.set_ylabel("Loss", size = 14)
+    # ax.set_title("Training Loss", size = 14, fontweight='bold')
+    # fig.set_figheight(6)
+    # fig.set_figwidth(16)
 
 
  
@@ -180,7 +196,6 @@ def main(filepath,lookback):
     gru.append(trainScore)
     gru.append(testScore)
     gru.append(training_time)
-    plt.show()
 
     # shift train predictions for plotting
     trainPredictPlot = np.empty_like(price_stock)
@@ -192,7 +207,7 @@ def main(filepath,lookback):
     testPredictPlot[:, :] = np.nan
     testPredictPlot[len(y_train_pred)+lookback-1:len(price_stock)-1, :] = y_test_pred
 
-    original = scaler.inverse_transform(price_stock['Close'].values.reshape(-1,1))
+    original = scaler.inverse_transform(price_stock['close'].values.reshape(-1,1))
 
     predictions = np.append(trainPredictPlot, testPredictPlot, axis=1)
     predictions = np.append(predictions, original, axis=1)
@@ -211,7 +226,7 @@ def main(filepath,lookback):
     fig.add_trace(go.Scatter(x=result.index, y=result[1],
                         mode='lines',
                         name='Test prediction'))
-    print(result[1])
+    
     fig.update_layout(
         xaxis=dict(
             showline=True,
@@ -256,8 +271,43 @@ def main(filepath,lookback):
                                 showarrow=False))
     fig.update_layout(annotations=annotations)
 
-    fig.show()
+    #fig.show()
+    return(float(result[1].iloc[-2])/float(result[2].iloc[-500]))
 
 # Call the main function with the path to the CSV file containing stock data
-main('AAPL-Data2.csv',5)
+#main('AAPL',5)
+import psycopg2
 
+try:
+    conn = psycopg2.connect(
+        dbname='hk2024',
+        user='hk2024_owner',
+        password='abdcJTrNp68Q',
+        host='ep-odd-truth-a27ydqp6-pooler.eu-central-1.aws.neon.tech'
+    )
+except psycopg2.Error as e:
+    print("Error: Could not make connection to the Postgres database")
+    print(e)
+try:
+    cur = conn.cursor()
+except psycopg2.Error as e:
+    print("Error: Could not get cursor to the Database")
+    print(e)
+try:
+    cur.execute("SELECT symbol FROM nasdaq ORDER BY marekt_cap desc;")
+except psycopg2.Error as e:
+    print("Error: Could not execute query")
+    print(e)
+try:
+    rows = cur.fetchall()
+    for row in rows:
+        try:
+            print(row[0])
+            data = main(row[0],20)
+            cur.execute(f"UPDATE nasdaq SET ai_rating={data} WHERE symbol='{row[0]}'")
+            conn.commit()
+        except:
+            pass
+except psycopg2.Error as e:
+    print("Error: Could not fetch data")
+    print(e)
